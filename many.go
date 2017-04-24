@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 	"bytes"
+	"os"
+	"os/signal"
 )
 
 // App is the app
@@ -21,7 +23,13 @@ type App struct {
 func main() {
 	app := newApp()
 	go app.report()
-	app.requestMany()
+	app.requestManyConcurrently()
+	defer func() {
+		fmt.Print(app.errBuffer.String())
+	}()
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	<- interrupt
 }
 
 func newApp() App {
@@ -43,6 +51,12 @@ func newApp() App {
 			},
 		},
 		ticker: time.NewTicker(time.Second),
+	}
+}
+
+func (app App) requestManyConcurrently() {
+	for i := 0; i < 8; i++ {
+		go app.requestMany()
 	}
 }
 
